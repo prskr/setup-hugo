@@ -31,16 +31,17 @@ export class OctokitReleaseLookup implements IReleaseLookup {
     version: string | undefined,
     transformer: IReleaseTransformer<T>
   ): Promise<T> {
-    const latestRelease = version
-      ? await this.octokit.rest.repos.getReleaseByTag({
-          owner: owner,
-          repo: repo,
-          tag: version
-        })
-      : await this.octokit.rest.repos.getLatestRelease({
-          owner: owner,
-          repo: repo
-        })
+    const latestRelease =
+      version && version !== 'latest'
+        ? await this.octokit.rest.repos.getReleaseByTag({
+            owner: owner,
+            repo: repo,
+            tag: version
+          })
+        : await this.octokit.rest.repos.getLatestRelease({
+            owner: owner,
+            repo: repo
+          })
     return transformer.map(latestRelease.data)
   }
 }

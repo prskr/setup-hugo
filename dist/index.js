@@ -49221,7 +49221,7 @@ class OctokitReleaseLookup {
         this.octokit = new dist_node.Octokit({ auth: pat });
     }
     async getRelease(owner, repo, version, transformer) {
-        const latestRelease = version
+        const latestRelease = version && version !== 'latest'
             ? await this.octokit.rest.repos.getReleaseByTag({
                 owner: owner,
                 repo: repo,

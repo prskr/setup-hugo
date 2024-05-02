@@ -15,7 +15,7 @@ describe('Asset lookup', () => {
     const release = await octoVersionDetermination.getRelease(
       Hugo.Org,
       Hugo.Repo,
-      '',
+      'latest',
       HugoReleaseTransformer
     )
     expect(release.tag_name).toMatch(new RegExp('\\d+.\\d+.\\d+'))
