@@ -57,8 +57,11 @@ jobs:
         id: test-action
         uses: ./
         with:
-          milliseconds: 2000
+          extended: true
+          dartSass: true
 
-      - name: Print Output
-        id: output
-        run: echo "${{ steps.test-action.outputs.time }}"
+      - name: Test installed tools
+        id: test-tools
+        run: |
+          hugo version
+          sass --version
