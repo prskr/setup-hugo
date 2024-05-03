@@ -6,19 +6,21 @@ import { components } from '@octokit/openapi-types'
 import * as tc from '@actions/tool-cache'
 import path from 'path'
 import * as os from 'node:os'
-import { mv } from '@actions/io'
+import { mv, rmRF, cp } from '@actions/io'
+import { randomUUID } from 'crypto'
+import { errorMsg } from './utils/error'
 
 export interface IHugoInstallCommand {
-  version: string
-  extended: boolean
+  version?: string
+  extended?: boolean
 }
 
 export class HugoInstaller {
   private readonly releaseLookup: IReleaseLookup
   private readonly platform: Platform
 
-  constructor(releaseLookup: IReleaseLookup) {
-    this.platform = new Platform()
+  constructor(releaseLookup: IReleaseLookup, platform?: Platform) {
+    this.platform = platform ?? new Platform()
     this.releaseLookup = releaseLookup
   }
 
@@ -34,9 +36,26 @@ export class HugoInstaller {
     core.debug(`Operating System: ${this.platform.os}`)
     core.debug(`Processor Architecture: ${this.platform.arch}`)
 
+    const hugoBinName = this.platform.binaryName(Hugo.CmdName)
     const workDir = await this.platform.createWorkDir()
     const binDir = await this.platform.ensureBinDir(workDir)
     const tmpDir = os.tmpdir()
+
+    try {
+      const cachedTool = tc.find(
+        Hugo.Name,
+        release.tag_name,
+        this.platform.arch
+      )
+      if (cachedTool) {
+        await cp(cachedTool, path.join(binDir, hugoBinName))
+        return
+      } else {
+        core.info('Tool not present in cache - downloading it...')
+      }
+    } catch (e) {
+      core.warning(`Failed to lookup tool in cache: ${errorMsg(e)}`)
+    }
 
     const toolUrl = release.assetUrl(this.platform, cmd.extended)
 
@@ -46,7 +65,7 @@ export class HugoInstaller {
 
     const destPath = path.join(
       tmpDir,
-      `hugo${this.platform.archiveExtension()}`
+      `hugo_${randomUUID()}${this.platform.archiveExtension()}`
     )
     await tc.downloadTool(toolUrl, destPath)
 
@@ -57,8 +76,22 @@ export class HugoInstaller {
       await tc.extractTar(destPath, tmpDir)
     }
 
+    await rmRF(destPath)
+
     core.debug(`move binaries to binDir: ${binDir}`)
-    await mv(path.join(tmpDir, this.platform.binaryName(Hugo.CmdName)), binDir)
+    await mv(path.join(tmpDir, hugoBinName), binDir)
+
+    try {
+      await tc.cacheFile(
+        path.join(binDir, hugoBinName),
+        hugoBinName,
+        Hugo.Name,
+        release.tag_name,
+        this.platform.arch
+      )
+    } catch (e) {
+      core.warning(`Failed to cache Hugo install: ${errorMsg(e)}`)
+    }
   }
 }
 
@@ -86,22 +119,22 @@ export class HugoRelease implements IGithubRelease {
     this.defaultAssets = new Map<string, string>()
     this.extendedAssets = new Map<string, string>()
 
-    assets.forEach(asset => {
+    for (const asset of assets) {
       if (asset.name.includes('extended')) {
         this.extendedAssets.set(
           asset.name.replace(HugoRelease.keyReplacementRegex, ''),
-          asset.url
+          asset.browser_download_url
         )
       } else {
         this.defaultAssets.set(
           asset.name.replace(HugoRelease.keyReplacementRegex, ''),
-          asset.url
+          asset.browser_download_url
         )
       }
-    })
+    }
   }
 
-  assetUrl(platform: Platform, extended: boolean): string | undefined {
+  assetUrl(platform: Platform, extended?: boolean): string | undefined {
     const src = extended ? this.extendedAssets : this.defaultAssets
     const arch = platform.os === 'darwin' ? 'universal' : platform.arch
     const key = `${platform.os}-${arch}${platform.archiveExtension()}`

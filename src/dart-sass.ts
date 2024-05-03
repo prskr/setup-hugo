@@ -1,12 +1,14 @@
 import { IGithubRelease, IReleaseLookup } from './asset-lookup'
-import { DartSass, Hugo } from './constants'
+import { DartSass } from './constants'
 import { components } from '@octokit/openapi-types'
 import * as tc from '@actions/tool-cache'
 import * as core from '@actions/core'
 import { Platform } from './os'
 import * as os from 'node:os'
 import path from 'path'
-import { mv } from '@actions/io'
+import { mv, rmRF } from '@actions/io'
+import { randomUUID } from 'crypto'
+import { errorMsg } from './utils/error'
 
 export interface IDartSassInstallCommand {
   version: string
@@ -36,6 +38,13 @@ export class DartSassInstaller {
     const binDir = await this.platform.ensureBinDir(workDir)
     const tmpDir = os.tmpdir()
 
+    try {
+      core.addPath(tc.find(DartSass.Name, release.tag_name, this.platform.arch))
+      return
+    } catch (e) {
+      core.warning(`Failed to lookup cached version: ${errorMsg(e)}`)
+    }
+
     const toolUrl = release.assetUrl(this.platform)
 
     if (!toolUrl) {
@@ -44,7 +53,7 @@ export class DartSassInstaller {
 
     const destPath = path.join(
       tmpDir,
-      `dart-sass${this.platform.archiveExtension()}`
+      `dart-sass-${randomUUID()}${this.platform.archiveExtension()}`
     )
     await tc.downloadTool(toolUrl, destPath)
 
@@ -55,8 +64,25 @@ export class DartSassInstaller {
       await tc.extractTar(destPath, tmpDir)
     }
 
-    core.debug(`move binaries to binDir: ${binDir}`)
-    await mv(path.join(tmpDir, 'dart-sass', '*'), binDir)
+    await rmRF(destPath)
+
+    core.debug(`Move binaries to binDir: ${binDir}`)
+    await mv(path.join(tmpDir, 'dart-sass'), binDir)
+
+    core.debug(`Add 'dart-sass' directory to cache`)
+
+    try {
+      core.addPath(
+        await tc.cacheDir(
+          path.join(binDir, 'dart-sass'),
+          DartSass.Name,
+          release.tag_name,
+          this.platform.arch
+        )
+      )
+    } catch (e) {
+      core.warning(`Failed to cache dart-sass directory: ${errorMsg(e)}`)
+    }
   }
 }
 
@@ -90,12 +116,12 @@ export class DartSassRelease implements IGithubRelease {
     this.tag_name = tag_name
     this.assets = new Map<string, string>()
 
-    assets.forEach(asset => {
+    for (const asset of assets) {
       this.assets.set(
         asset.name.replace(DartSassRelease.keyReplacementRegex, ''),
-        asset.url
+        asset.browser_download_url
       )
-    })
+    }
   }
 
   assetUrl(platform: Platform): string | undefined {

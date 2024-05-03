@@ -27,8 +27,8 @@
   },
   "lint-staged": {
     "{src,__tests__}/**/*.ts": [
-      "prettier --check",
-      "eslint"
+      "npx prettier --check",
+      "npx eslint . -c ./.forgejo/linters/.eslintrc.yml"
     ],
     "README.md": [
       "npx doctoc@2.1.0 --github"

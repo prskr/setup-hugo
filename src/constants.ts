@@ -2,13 +2,11 @@ export enum Hugo {
   Name = 'Hugo',
   Org = 'gohugoio',
   Repo = 'hugo',
-  CmdName = 'hugo',
-  CmdOptVersion = 'version',
-  TestVersionLatest = '0.83.1',
-  TestVersionSpec = '0.82.1'
+  CmdName = 'hugo'
 }
 
 export enum DartSass {
+  Name = 'dart-sass',
   Org = 'sass',
   Repo = 'dart-sass'
 }

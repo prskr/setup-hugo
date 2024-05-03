@@ -10,9 +10,9 @@ beforeEach(() => {
 
 describe('Asset lookup', () => {
   test('Hugo: should return valid version', async () => {
-    const octoVersionDetermination = new OctokitReleaseLookup()
+    const releaseLookup = new OctokitReleaseLookup()
 
-    const release = await octoVersionDetermination.getRelease(
+    const release = await releaseLookup.getRelease(
       Hugo.Org,
       Hugo.Repo,
       'latest',

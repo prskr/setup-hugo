@@ -49333,12 +49333,10 @@ var Hugo;
     Hugo["Org"] = "gohugoio";
     Hugo["Repo"] = "hugo";
     Hugo["CmdName"] = "hugo";
-    Hugo["CmdOptVersion"] = "version";
-    Hugo["TestVersionLatest"] = "0.83.1";
-    Hugo["TestVersionSpec"] = "0.82.1";
 })(Hugo || (Hugo = {}));
 var DartSass;
 (function (DartSass) {
+    DartSass["Name"] = "dart-sass";
     DartSass["Org"] = "sass";
     DartSass["Repo"] = "dart-sass";
 })(DartSass || (DartSass = {}));
@@ -49411,7 +49409,21 @@ class Platform {
 var tool_cache = __nccwpck_require__(7784);
 ;// CONCATENATED MODULE: external "node:os"
 const external_node_os_namespaceObject = require("node:os");
+// EXTERNAL MODULE: external "crypto"
+var external_crypto_ = __nccwpck_require__(6113);
+;// CONCATENATED MODULE: ./src/utils/error.ts
+function errorMsg(e) {
+    if (typeof e === 'string') {
+        return e;
+    }
+    else if (e instanceof Error) {
+        return e.message;
+    }
+}
+
 ;// CONCATENATED MODULE: ./src/hugo.ts
+
+
 
 
 
@@ -49422,8 +49434,8 @@ const external_node_os_namespaceObject = require("node:os");
 class HugoInstaller {
     releaseLookup;
     platform;
-    constructor(releaseLookup) {
-        this.platform = new Platform();
+    constructor(releaseLookup, platform) {
+        this.platform = platform ?? new Platform();
         this.releaseLookup = releaseLookup;
     }
     async install(cmd) {
@@ -49431,14 +49443,28 @@ class HugoInstaller {
         core.debug(`Hugo extended: ${cmd.extended}`);
         core.debug(`Operating System: ${this.platform.os}`);
         core.debug(`Processor Architecture: ${this.platform.arch}`);
+        const hugoBinName = this.platform.binaryName(Hugo.CmdName);
         const workDir = await this.platform.createWorkDir();
         const binDir = await this.platform.ensureBinDir(workDir);
         const tmpDir = external_node_os_namespaceObject.tmpdir();
+        try {
+            const cachedTool = tool_cache.find(Hugo.Name, release.tag_name, this.platform.arch);
+            if (cachedTool) {
+                await (0,io.cp)(cachedTool, external_path_default().join(binDir, hugoBinName));
+                return;
+            }
+            else {
+                core.info('Tool not present in cache - downloading it...');
+            }
+        }
+        catch (e) {
+            core.warning(`Failed to lookup tool in cache: ${errorMsg(e)}`);
+        }
         const toolUrl = release.assetUrl(this.platform, cmd.extended);
         if (!toolUrl) {
             throw new Error('No matching URL detected for given platform');
         }
-        const destPath = external_path_default().join(tmpDir, `hugo${this.platform.archiveExtension()}`);
+        const destPath = external_path_default().join(tmpDir, `hugo_${(0,external_crypto_.randomUUID)()}${this.platform.archiveExtension()}`);
         await tool_cache.downloadTool(toolUrl, destPath);
         core.debug(`Extract archive: ${destPath}`);
         if (this.platform.isWindows()) {
@@ -49447,8 +49473,15 @@ class HugoInstaller {
         else {
             await tool_cache.extractTar(destPath, tmpDir);
         }
+        await (0,io.rmRF)(destPath);
         core.debug(`move binaries to binDir: ${binDir}`);
-        await (0,io.mv)(external_path_default().join(tmpDir, this.platform.binaryName(Hugo.CmdName)), binDir);
+        await (0,io.mv)(external_path_default().join(tmpDir, hugoBinName), binDir);
+        try {
+            await tool_cache.cacheFile(external_path_default().join(binDir, hugoBinName), hugoBinName, Hugo.Name, release.tag_name, this.platform.arch);
+        }
+        catch (e) {
+            core.warning(`Failed to cache Hugo install: ${errorMsg(e)}`);
+        }
     }
 }
 const HugoReleaseTransformer = {
@@ -49465,14 +49498,14 @@ class HugoRelease {
         this.tag_name = tag_name;
         this.defaultAssets = new Map();
         this.extendedAssets = new Map();
-        assets.forEach(asset => {
+        for (const asset of assets) {
             if (asset.name.includes('extended')) {
-                this.extendedAssets.set(asset.name.replace(HugoRelease.keyReplacementRegex, ''), asset.url);
+                this.extendedAssets.set(asset.name.replace(HugoRelease.keyReplacementRegex, ''), asset.browser_download_url);
             }
             else {
-                this.defaultAssets.set(asset.name.replace(HugoRelease.keyReplacementRegex, ''), asset.url);
+                this.defaultAssets.set(asset.name.replace(HugoRelease.keyReplacementRegex, ''), asset.browser_download_url);
             }
-        });
+        }
     }
     assetUrl(platform, extended) {
         const src = extended ? this.extendedAssets : this.defaultAssets;
@@ -49497,19 +49530,21 @@ class OctokitReleaseLookup {
     async getRelease(owner, repo, version, transformer) {
         const latestRelease = version && version !== 'latest'
             ? await this.octokit.rest.repos.getReleaseByTag({
-                owner: owner,
-                repo: repo,
+                owner,
+                repo,
                 tag: version
             })
             : await this.octokit.rest.repos.getLatestRelease({
-                owner: owner,
-                repo: repo
+                owner,
+                repo
             });
         return transformer.map(latestRelease.data);
     }
 }
 
 ;// CONCATENATED MODULE: ./src/dart-sass.ts
+
+
 
 
 
@@ -49531,11 +49566,18 @@ class DartSassInstaller {
         const workDir = await this.platform.createWorkDir();
         const binDir = await this.platform.ensureBinDir(workDir);
         const tmpDir = external_node_os_namespaceObject.tmpdir();
+        try {
+            core.addPath(tool_cache.find(DartSass.Name, release.tag_name, this.platform.arch));
+            return;
+        }
+        catch (e) {
+            core.warning(`Failed to lookup cached version: ${errorMsg(e)}`);
+        }
         const toolUrl = release.assetUrl(this.platform);
         if (!toolUrl) {
             throw new Error('No matching URL detected for given platform');
         }
-        const destPath = external_path_default().join(tmpDir, `dart-sass${this.platform.archiveExtension()}`);
+        const destPath = external_path_default().join(tmpDir, `dart-sass-${(0,external_crypto_.randomUUID)()}${this.platform.archiveExtension()}`);
         await tool_cache.downloadTool(toolUrl, destPath);
         core.debug(`Extract archive: ${destPath}`);
         if (this.platform.isWindows()) {
@@ -49544,8 +49586,16 @@ class DartSassInstaller {
         else {
             await tool_cache.extractTar(destPath, tmpDir);
         }
-        core.debug(`move binaries to binDir: ${binDir}`);
-        await (0,io.mv)(external_path_default().join(tmpDir, 'dart-sass', '*'), binDir);
+        await (0,io.rmRF)(destPath);
+        core.debug(`Move binaries to binDir: ${binDir}`);
+        await (0,io.mv)(external_path_default().join(tmpDir, 'dart-sass'), binDir);
+        core.debug(`Add 'dart-sass' directory to cache`);
+        try {
+            core.addPath(await tool_cache.cacheDir(external_path_default().join(binDir, 'dart-sass'), DartSass.Name, release.tag_name, this.platform.arch));
+        }
+        catch (e) {
+            core.warning(`Failed to cache dart-sass directory: ${errorMsg(e)}`);
+        }
     }
 }
 const DartSassReleaseTransformer = {
@@ -49565,9 +49615,9 @@ class DartSassRelease {
     constructor(tag_name, assets) {
         this.tag_name = tag_name;
         this.assets = new Map();
-        assets.forEach(asset => {
-            this.assets.set(asset.name.replace(DartSassRelease.keyReplacementRegex, ''), asset.url);
-        });
+        for (const asset of assets) {
+            this.assets.set(asset.name.replace(DartSassRelease.keyReplacementRegex, ''), asset.browser_download_url);
+        }
     }
     assetUrl(platform) {
         const mappedOS = DartSassRelease.platformMapping[platform.os];
@@ -49598,12 +49648,13 @@ async function run() {
 ;// CONCATENATED MODULE: ./src/index.ts
 
 
+
 (async () => {
     try {
         await run();
     }
     catch (e) {
-        core.setFailed(`Action failed with error ${e.message}`);
+        core.setFailed(`Action failed with error ${errorMsg(e)}`);
     }
 })();
 

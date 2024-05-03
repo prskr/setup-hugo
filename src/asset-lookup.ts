@@ -36,13 +36,13 @@ export class OctokitReleaseLookup implements IReleaseLookup {
     const latestRelease =
       version && version !== 'latest'
         ? await this.octokit.rest.repos.getReleaseByTag({
-            owner: owner,
-            repo: repo,
+            owner,
+            repo,
             tag: version
           })
         : await this.octokit.rest.repos.getLatestRelease({
-            owner: owner,
-            repo: repo
+            owner,
+            repo
           })
     return transformer.map(latestRelease.data)
   }
