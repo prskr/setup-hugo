@@ -23,11 +23,22 @@ export class Platform {
     this.env = env
   }
 
+  isWindows(): boolean {
+    return this.os === 'win32'
+  }
+
   archiveExtension(): string {
-    if (this.os === 'win32') {
+    if (this.isWindows()) {
       return '.zip'
     }
     return '.tar.gz'
+  }
+
+  binaryName(base: string): string {
+    if (this.isWindows()) {
+      return `${base}.exec`
+    }
+    return base
   }
 
   async createWorkDir(): Promise<string> {
@@ -37,14 +48,7 @@ export class Platform {
     return workDir
   }
 
-  async createTempDir(workDir: string): Promise<string> {
-    const tempDir = path.join(workDir, Action.TempDirName)
-    await io.mkdirP(tempDir)
-    core.debug(`tempDir: ${tempDir}`)
-    return tempDir
-  }
-
-  async createBinDir(workDir: string): Promise<string> {
+  async ensureBinDir(workDir: string): Promise<string> {
     const binDir = path.join(workDir, 'bin')
     await io.mkdirP(binDir)
     core.addPath(binDir)
@@ -53,10 +57,9 @@ export class Platform {
   }
 
   getHomeDir(): string {
-    const homedir =
-      this.os === 'win32'
-        ? this.env['USERPROFILE'] || 'C:\\'
-        : this.env.HOME || '/root'
+    const homedir = this.isWindows()
+      ? this.env['USERPROFILE'] || 'C:\\'
+      : this.env.HOME || '/root'
 
     core.debug(`homeDir: ${homedir}`)
 

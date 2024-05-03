@@ -1,9 +1,12 @@
 import { IGithubRelease, IReleaseLookup } from './asset-lookup'
-import { DartSass } from './constants'
+import { DartSass, Hugo } from './constants'
 import { components } from '@octokit/openapi-types'
+import * as tc from '@actions/tool-cache'
 import * as core from '@actions/core'
 import { Platform } from './os'
-import { downloadTool } from '@actions/tool-cache'
+import * as os from 'node:os'
+import path from 'path'
+import { mv } from '@actions/io'
 
 export interface IDartSassInstallCommand {
   version: string
@@ -30,8 +33,8 @@ export class DartSassInstaller {
     core.debug(`Processor Architecture: ${this.platform.arch}`)
 
     const workDir = await this.platform.createWorkDir()
-    const binDir = await this.platform.createBinDir(workDir)
-    const tempDir = await this.platform.createTempDir(workDir)
+    const binDir = await this.platform.ensureBinDir(workDir)
+    const tmpDir = os.tmpdir()
 
     const toolUrl = release.assetUrl(this.platform)
 
@@ -39,7 +42,21 @@ export class DartSassInstaller {
       throw new Error('No matching URL detected for given platform')
     }
 
-    await downloadTool(toolUrl, binDir, tempDir)
+    const destPath = path.join(
+      tmpDir,
+      `dart-sass${this.platform.archiveExtension()}`
+    )
+    await tc.downloadTool(toolUrl, destPath)
+
+    core.debug(`Extract archive: ${destPath}`)
+    if (this.platform.isWindows()) {
+      await tc.extractZip(destPath, tmpDir)
+    } else {
+      await tc.extractTar(destPath, tmpDir)
+    }
+
+    core.debug(`move binaries to binDir: ${binDir}`)
+    await mv(path.join(tmpDir, 'dart-sass', '*'), binDir)
   }
 }
 

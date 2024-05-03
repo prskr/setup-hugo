@@ -1,5 +1,7 @@
-import { Octokit } from 'octokit'
+import { getOctokit } from '@actions/github'
 import { components } from '@octokit/openapi-types/types'
+import { GitHub } from '@actions/github/lib/utils'
+import { Octokit } from 'octokit'
 
 export interface IGithubRelease {
   readonly tag_name: string
@@ -19,10 +21,10 @@ export interface IReleaseLookup {
 }
 
 export class OctokitReleaseLookup implements IReleaseLookup {
-  octokit: Octokit
+  octokit: InstanceType<typeof GitHub> | Octokit
 
   constructor(pat?: string) {
-    this.octokit = new Octokit({ auth: pat })
+    this.octokit = pat ? getOctokit(pat) : new Octokit()
   }
 
   async getRelease<T extends IGithubRelease>(

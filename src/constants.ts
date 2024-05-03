@@ -14,6 +14,6 @@ export enum DartSass {
 }
 
 export enum Action {
-  WorkDirName = 'actions_hugo',
+  WorkDirName = 'actions_hugo_setup',
   TempDirName = '_temp'
 }
