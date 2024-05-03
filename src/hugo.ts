@@ -6,7 +6,7 @@ import { components } from '@octokit/openapi-types'
 import * as tc from '@actions/tool-cache'
 import path from 'path'
 import * as os from 'node:os'
-import { mv, rmRF, cp } from '@actions/io'
+import { mv, rmRF } from '@actions/io'
 import { randomUUID } from 'crypto'
 import { errorMsg } from './utils/error'
 
@@ -48,10 +48,8 @@ export class HugoInstaller {
         this.platform.arch
       )
       if (cachedTool) {
-        await cp(cachedTool, path.join(binDir, hugoBinName))
+        core.addPath(cachedTool)
         return
-      } else {
-        core.info('Tool not present in cache - downloading it...')
       }
     } catch (e) {
       core.warning(`Failed to lookup tool in cache: ${errorMsg(e)}`)

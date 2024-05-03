@@ -18,8 +18,8 @@ export class DartSassInstaller {
   private readonly releaseLookup: IReleaseLookup
   private readonly platform: Platform
 
-  constructor(releaseLookup: IReleaseLookup) {
-    this.platform = new Platform()
+  constructor(releaseLookup: IReleaseLookup, platform?: Platform) {
+    this.platform = platform ?? new Platform()
     this.releaseLookup = releaseLookup
   }
 
@@ -39,8 +39,15 @@ export class DartSassInstaller {
     const tmpDir = os.tmpdir()
 
     try {
-      core.addPath(tc.find(DartSass.Name, release.tag_name, this.platform.arch))
-      return
+      const cachedDartSass = tc.find(
+        DartSass.Name,
+        release.tag_name,
+        this.platform.arch
+      )
+      if (cachedDartSass) {
+        core.addPath(cachedDartSass)
+        return
+      }
     } catch (e) {
       core.warning(`Failed to lookup cached version: ${errorMsg(e)}`)
     }
@@ -82,6 +89,7 @@ export class DartSassInstaller {
       )
     } catch (e) {
       core.warning(`Failed to cache dart-sass directory: ${errorMsg(e)}`)
+      core.addPath(path.join(binDir, 'dart-sass'))
     }
   }
 }

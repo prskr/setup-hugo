@@ -49450,11 +49450,8 @@ class HugoInstaller {
         try {
             const cachedTool = tool_cache.find(Hugo.Name, release.tag_name, this.platform.arch);
             if (cachedTool) {
-                await (0,io.cp)(cachedTool, external_path_default().join(binDir, hugoBinName));
+                core.addPath(cachedTool);
                 return;
-            }
-            else {
-                core.info('Tool not present in cache - downloading it...');
             }
         }
         catch (e) {
@@ -49555,8 +49552,8 @@ class OctokitReleaseLookup {
 class DartSassInstaller {
     releaseLookup;
     platform;
-    constructor(releaseLookup) {
-        this.platform = new Platform();
+    constructor(releaseLookup, platform) {
+        this.platform = platform ?? new Platform();
         this.releaseLookup = releaseLookup;
     }
     async install(cmd) {
@@ -49567,8 +49564,11 @@ class DartSassInstaller {
         const binDir = await this.platform.ensureBinDir(workDir);
         const tmpDir = external_node_os_namespaceObject.tmpdir();
         try {
-            core.addPath(tool_cache.find(DartSass.Name, release.tag_name, this.platform.arch));
-            return;
+            const cachedDartSass = tool_cache.find(DartSass.Name, release.tag_name, this.platform.arch);
+            if (cachedDartSass) {
+                core.addPath(cachedDartSass);
+                return;
+            }
         }
         catch (e) {
             core.warning(`Failed to lookup cached version: ${errorMsg(e)}`);
@@ -49595,6 +49595,7 @@ class DartSassInstaller {
         }
         catch (e) {
             core.warning(`Failed to cache dart-sass directory: ${errorMsg(e)}`);
+            core.addPath(external_path_default().join(binDir, 'dart-sass'));
         }
     }
 }
