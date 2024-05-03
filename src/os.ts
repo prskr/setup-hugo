@@ -48,10 +48,9 @@ export class Platform {
     return workDir
   }
 
-  async ensureBinDir(workDir: string): Promise<string> {
-    const binDir = path.join(workDir, 'bin')
+  async ensureBinDir(): Promise<string> {
+    const binDir = path.join(this.getHomeDir(), Action.WorkDirName, 'bin')
     await io.mkdirP(binDir)
-    core.addPath(binDir)
     core.debug(`binDir: ${binDir}`)
     return binDir
   }

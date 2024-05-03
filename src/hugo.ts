@@ -37,8 +37,6 @@ export class HugoInstaller {
     core.debug(`Processor Architecture: ${this.platform.arch}`)
 
     const hugoBinName = this.platform.binaryName(Hugo.CmdName)
-    const workDir = await this.platform.createWorkDir()
-    const binDir = await this.platform.ensureBinDir(workDir)
     const tmpDir = os.tmpdir()
 
     try {
@@ -76,19 +74,23 @@ export class HugoInstaller {
 
     await rmRF(destPath)
 
-    core.debug(`move binaries to binDir: ${binDir}`)
-    await mv(path.join(tmpDir, hugoBinName), binDir)
-
     try {
-      await tc.cacheFile(
-        path.join(binDir, hugoBinName),
+      const cachedHugoPath = await tc.cacheFile(
+        path.join(tmpDir, hugoBinName),
         hugoBinName,
         Hugo.Name,
         release.tag_name,
         this.platform.arch
       )
+
+      core.addPath(cachedHugoPath)
     } catch (e) {
       core.warning(`Failed to cache Hugo install: ${errorMsg(e)}`)
+
+      const binDir = await this.platform.ensureBinDir()
+      core.debug(`move binaries to binDir: ${binDir}`)
+      await mv(path.join(tmpDir, hugoBinName), binDir)
+      core.addPath(binDir)
     }
   }
 }

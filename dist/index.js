@@ -49389,10 +49389,9 @@ class Platform {
         core.debug(`workDir: ${workDir}`);
         return workDir;
     }
-    async ensureBinDir(workDir) {
-        const binDir = external_path_default().join(workDir, 'bin');
+    async ensureBinDir() {
+        const binDir = external_path_default().join(this.getHomeDir(), Action.WorkDirName, 'bin');
         await io.mkdirP(binDir);
-        core.addPath(binDir);
         core.debug(`binDir: ${binDir}`);
         return binDir;
     }
@@ -49444,8 +49443,6 @@ class HugoInstaller {
         core.debug(`Operating System: ${this.platform.os}`);
         core.debug(`Processor Architecture: ${this.platform.arch}`);
         const hugoBinName = this.platform.binaryName(Hugo.CmdName);
-        const workDir = await this.platform.createWorkDir();
-        const binDir = await this.platform.ensureBinDir(workDir);
         const tmpDir = external_node_os_namespaceObject.tmpdir();
         try {
             const cachedTool = tool_cache.find(Hugo.Name, release.tag_name, this.platform.arch);
@@ -49471,13 +49468,16 @@ class HugoInstaller {
             await tool_cache.extractTar(destPath, tmpDir);
         }
         await (0,io.rmRF)(destPath);
-        core.debug(`move binaries to binDir: ${binDir}`);
-        await (0,io.mv)(external_path_default().join(tmpDir, hugoBinName), binDir);
         try {
-            await tool_cache.cacheFile(external_path_default().join(binDir, hugoBinName), hugoBinName, Hugo.Name, release.tag_name, this.platform.arch);
+            const cachedHugoPath = await tool_cache.cacheFile(external_path_default().join(tmpDir, hugoBinName), hugoBinName, Hugo.Name, release.tag_name, this.platform.arch);
+            core.addPath(cachedHugoPath);
         }
         catch (e) {
             core.warning(`Failed to cache Hugo install: ${errorMsg(e)}`);
+            const binDir = await this.platform.ensureBinDir();
+            core.debug(`move binaries to binDir: ${binDir}`);
+            await (0,io.mv)(external_path_default().join(tmpDir, hugoBinName), binDir);
+            core.addPath(binDir);
         }
     }
 }
@@ -49560,8 +49560,6 @@ class DartSassInstaller {
         const release = await this.releaseLookup.getRelease(DartSass.Org, DartSass.Repo, cmd.version, DartSassReleaseTransformer);
         core.debug(`Operating System: ${this.platform.os}`);
         core.debug(`Processor Architecture: ${this.platform.arch}`);
-        const workDir = await this.platform.createWorkDir();
-        const binDir = await this.platform.ensureBinDir(workDir);
         const tmpDir = external_node_os_namespaceObject.tmpdir();
         try {
             const cachedDartSass = tool_cache.find(DartSass.Name, release.tag_name, this.platform.arch);
@@ -49587,14 +49585,16 @@ class DartSassInstaller {
             await tool_cache.extractTar(destPath, tmpDir);
         }
         await (0,io.rmRF)(destPath);
-        core.debug(`Move binaries to binDir: ${binDir}`);
-        await (0,io.mv)(external_path_default().join(tmpDir, 'dart-sass'), binDir);
         core.debug(`Add 'dart-sass' directory to cache`);
         try {
-            core.addPath(await tool_cache.cacheDir(external_path_default().join(binDir, 'dart-sass'), DartSass.Name, release.tag_name, this.platform.arch));
+            const cachedDartSass = await tool_cache.cacheDir(external_path_default().join(tmpDir, 'dart-sass'), DartSass.Name, release.tag_name, this.platform.arch);
+            core.addPath(cachedDartSass);
         }
         catch (e) {
             core.warning(`Failed to cache dart-sass directory: ${errorMsg(e)}`);
+            const binDir = await this.platform.ensureBinDir();
+            core.debug(`Move binaries to binDir: ${binDir}`);
+            await (0,io.mv)(external_path_default().join(tmpDir, 'dart-sass'), binDir);
             core.addPath(external_path_default().join(binDir, 'dart-sass'));
         }
     }

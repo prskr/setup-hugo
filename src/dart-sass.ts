@@ -34,8 +34,6 @@ export class DartSassInstaller {
     core.debug(`Operating System: ${this.platform.os}`)
     core.debug(`Processor Architecture: ${this.platform.arch}`)
 
-    const workDir = await this.platform.createWorkDir()
-    const binDir = await this.platform.ensureBinDir(workDir)
     const tmpDir = os.tmpdir()
 
     try {
@@ -73,22 +71,23 @@ export class DartSassInstaller {
 
     await rmRF(destPath)
 
-    core.debug(`Move binaries to binDir: ${binDir}`)
-    await mv(path.join(tmpDir, 'dart-sass'), binDir)
-
     core.debug(`Add 'dart-sass' directory to cache`)
 
     try {
-      core.addPath(
-        await tc.cacheDir(
-          path.join(binDir, 'dart-sass'),
-          DartSass.Name,
-          release.tag_name,
-          this.platform.arch
-        )
+      const cachedDartSass = await tc.cacheDir(
+        path.join(tmpDir, 'dart-sass'),
+        DartSass.Name,
+        release.tag_name,
+        this.platform.arch
       )
+
+      core.addPath(cachedDartSass)
     } catch (e) {
       core.warning(`Failed to cache dart-sass directory: ${errorMsg(e)}`)
+
+      const binDir = await this.platform.ensureBinDir()
+      core.debug(`Move binaries to binDir: ${binDir}`)
+      await mv(path.join(tmpDir, 'dart-sass'), binDir)
       core.addPath(path.join(binDir, 'dart-sass'))
     }
   }
