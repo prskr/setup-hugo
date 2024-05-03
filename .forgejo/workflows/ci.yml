@@ -58,7 +58,7 @@ jobs:
         uses: ./
         with:
           extended: true
-          dartSass: true
+          dart-sass: true
 
       - name: Test installed tools
         id: test-tools
