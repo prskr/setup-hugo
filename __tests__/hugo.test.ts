@@ -18,7 +18,9 @@ afterEach(() => {
 
 describe('Install Hugo', () => {
   test('Download latest Hugo', async () => {
-    const releaseLookup = new OctokitReleaseLookup()
+    const releaseLookup = new OctokitReleaseLookup(
+      process.env.GITHUB_TOKEN || undefined
+    )
     const platformMock = new Platform('linux', undefined, { HOME: tmpDir })
     const hugo = new HugoInstaller(releaseLookup, platformMock)
 
@@ -26,6 +28,38 @@ describe('Install Hugo', () => {
       async () =>
         await hugo.install({
           version: 'latest'
+        })
+    ).not.toThrow()
+  }, 30_000)
+
+  test('Download latest Hugo - extended', async () => {
+    const releaseLookup = new OctokitReleaseLookup(
+      process.env.GITHUB_TOKEN || undefined
+    )
+    const platformMock = new Platform('linux', undefined, { HOME: tmpDir })
+    const hugo = new HugoInstaller(releaseLookup, platformMock)
+
+    expect(
+      async () =>
+        await hugo.install({
+          version: 'latest',
+          extended: true
+        })
+    ).not.toThrow()
+  }, 30_000)
+
+  test('Download latest Hugo - with deploy', async () => {
+    const releaseLookup = new OctokitReleaseLookup(
+      process.env.GITHUB_TOKEN || undefined
+    )
+    const platformMock = new Platform('linux', undefined, { HOME: tmpDir })
+    const hugo = new HugoInstaller(releaseLookup, platformMock)
+
+    expect(
+      async () =>
+        await hugo.install({
+          version: 'latest',
+          withDeploy: true
         })
     ).not.toThrow()
   }, 30_000)

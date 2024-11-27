@@ -50817,10 +50817,10 @@ class HugoInstaller {
         const tmpDir = external_node_os_namespaceObject.tmpdir();
         let versionSpec = release.tag_name;
         if (cmd.extended) {
-            versionSpec += '+extended';
+            versionSpec = `${release.tag_name}+extended`;
         }
-        if (cmd.withDeploy) {
-            versionSpec += '+withdeploy';
+        else if (cmd.withDeploy) {
+            versionSpec = `${release.tag_name}+extended+withdeploy`;
         }
         try {
             const cachedTool = tool_cache.find(Hugo.Name, versionSpec, this.platform.arch);
@@ -50832,7 +50832,7 @@ class HugoInstaller {
         catch (e) {
             core.warning(`Failed to lookup tool in cache: ${errorMsg(e)}`);
         }
-        const toolUrl = release.assetUrl(this.platform, cmd.extended);
+        const toolUrl = release.assetUrl(this.platform, cmd.extended, cmd.withDeploy);
         if (!toolUrl) {
             throw new Error('No matching URL detected for given platform');
         }

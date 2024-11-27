@@ -43,10 +43,9 @@ export class HugoInstaller {
 
     let versionSpec = release.tag_name
     if (cmd.extended) {
-      versionSpec += '+extended'
-    }
-    if (cmd.withDeploy) {
-      versionSpec += '+withdeploy'
+      versionSpec = `${release.tag_name}+extended`
+    } else if (cmd.withDeploy) {
+      versionSpec = `${release.tag_name}+extended+withdeploy`
     }
 
     try {
@@ -59,7 +58,11 @@ export class HugoInstaller {
       core.warning(`Failed to lookup tool in cache: ${errorMsg(e)}`)
     }
 
-    const toolUrl = release.assetUrl(this.platform, cmd.extended)
+    const toolUrl = release.assetUrl(
+      this.platform,
+      cmd.extended,
+      cmd.withDeploy
+    )
 
     if (!toolUrl) {
       throw new Error('No matching URL detected for given platform')
