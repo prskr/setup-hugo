@@ -59,6 +59,7 @@ jobs:
         with:
           extended: true
           dart-sass: true
+          with-deploy: true
 
       - name: Test installed tools
         id: test-tools

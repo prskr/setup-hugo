@@ -11,7 +11,8 @@ export async function run(): Promise<void> {
 
   await hugoInstaller.install({
     version: core.getInput('hugo-version'),
-    extended: core.getBooleanInput('extended')
+    extended: core.getBooleanInput('extended'),
+    withDeploy: core.getBooleanInput('with-deploy')
   })
 
   if (!core.getBooleanInput('dart-sass')) return

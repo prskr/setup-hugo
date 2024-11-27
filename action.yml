@@ -15,6 +15,12 @@ inputs:
     description: 'Download (if necessary) dart-sass'
     required: false
     default: 'false'
+  with-deploy:
+    description:
+      'Fetch a Hugo build that includes the deploy command - if true, will
+      override the extended option'
+    required: false
+    default: 'false'
   dart-sass-version:
     description:
       'The dart-sass version to download.ts (if necessary) and use. Example:

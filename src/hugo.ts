@@ -13,6 +13,7 @@ import { errorMsg } from './utils/error'
 export interface IHugoInstallCommand {
   version?: string
   extended?: boolean
+  withDeploy?: boolean
 }
 
 export class HugoInstaller {
@@ -32,7 +33,8 @@ export class HugoInstaller {
       HugoReleaseTransformer
     )
 
-    core.debug(`Hugo extended: ${cmd.extended}`)
+    core.debug(`Hugo extended: ${cmd.extended ?? false}`)
+    core.debug(`Hugo with deploy: ${cmd.withDeploy ?? false}`)
     core.debug(`Operating System: ${this.platform.os}`)
     core.debug(`Processor Architecture: ${this.platform.arch}`)
 
@@ -103,13 +105,14 @@ export const HugoReleaseTransformer = {
 
 export class HugoRelease implements IGithubRelease {
   private static readonly keyReplacementRegex = new RegExp(
-    'hugo_(extended_)*(\\d+.\\d+.\\d+)_'
+    'hugo_(extended_)*(withdeploy_)*(\\d+.\\d+.\\d+)_'
   )
 
   readonly tag_name: string
 
   private readonly defaultAssets: Map<string, string>
   private readonly extendedAssets: Map<string, string>
+  private readonly withDeployAssets: Map<string, string>
 
   constructor(
     tag_name: string,
@@ -118,9 +121,15 @@ export class HugoRelease implements IGithubRelease {
     this.tag_name = tag_name
     this.defaultAssets = new Map<string, string>()
     this.extendedAssets = new Map<string, string>()
+    this.withDeployAssets = new Map<string, string>()
 
     for (const asset of assets) {
-      if (asset.name.includes('extended')) {
+      if (asset.name.includes('extended_withdeploy')) {
+        this.withDeployAssets.set(
+          asset.name.replace(HugoRelease.keyReplacementRegex, ''),
+          asset.browser_download_url
+        )
+      } else if (asset.name.includes('extended')) {
         this.extendedAssets.set(
           asset.name.replace(HugoRelease.keyReplacementRegex, ''),
           asset.browser_download_url
@@ -134,11 +143,21 @@ export class HugoRelease implements IGithubRelease {
     }
   }
 
-  assetUrl(platform: Platform, extended?: boolean): string | undefined {
-    const src = extended ? this.extendedAssets : this.defaultAssets
+  assetUrl(
+    platform: Platform,
+    extended?: boolean,
+    withDeploy?: boolean
+  ): string | undefined {
+    let assets = this.defaultAssets
+    if (withDeploy) {
+      assets = this.withDeployAssets
+    } else if (extended) {
+      assets = this.extendedAssets
+    }
+
     const arch = platform.os === 'darwin' ? 'universal' : platform.arch
     const key = `${platform.os}-${arch}${platform.archiveExtension()}`
 
-    return src.get(key)
+    return assets.get(key)
   }
 }
