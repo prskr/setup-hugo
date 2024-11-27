@@ -50809,13 +50809,21 @@ class HugoInstaller {
     }
     async install(cmd) {
         const release = await this.releaseLookup.getRelease(Hugo.Org, Hugo.Repo, cmd.version, HugoReleaseTransformer);
-        core.debug(`Hugo extended: ${cmd.extended}`);
+        core.debug(`Hugo extended: ${cmd.extended ?? false}`);
+        core.debug(`Hugo with deploy: ${cmd.withDeploy ?? false}`);
         core.debug(`Operating System: ${this.platform.os}`);
         core.debug(`Processor Architecture: ${this.platform.arch}`);
         const hugoBinName = this.platform.binaryName(Hugo.CmdName);
         const tmpDir = external_node_os_namespaceObject.tmpdir();
+        let versionSpec = release.tag_name;
+        if (cmd.extended) {
+            versionSpec += '+extended';
+        }
+        if (cmd.withDeploy) {
+            versionSpec += '+withdeploy';
+        }
         try {
-            const cachedTool = tool_cache.find(Hugo.Name, release.tag_name, this.platform.arch);
+            const cachedTool = tool_cache.find(Hugo.Name, versionSpec, this.platform.arch);
             if (cachedTool) {
                 core.addPath(cachedTool);
                 return;
@@ -50839,7 +50847,7 @@ class HugoInstaller {
         }
         await (0,io.rmRF)(destPath);
         try {
-            const cachedHugoPath = await tool_cache.cacheFile(external_path_default().join(tmpDir, hugoBinName), hugoBinName, Hugo.Name, release.tag_name, this.platform.arch);
+            const cachedHugoPath = await tool_cache.cacheFile(external_path_default().join(tmpDir, hugoBinName), hugoBinName, Hugo.Name, versionSpec, this.platform.arch);
             core.addPath(cachedHugoPath);
         }
         catch (e) {
@@ -50857,16 +50865,21 @@ const HugoReleaseTransformer = {
     }
 };
 class HugoRelease {
-    static keyReplacementRegex = new RegExp('hugo_(extended_)*(\\d+.\\d+.\\d+)_');
+    static keyReplacementRegex = new RegExp('hugo_(extended_)*(withdeploy_)*(\\d+.\\d+.\\d+)_');
     tag_name;
     defaultAssets;
     extendedAssets;
+    withDeployAssets;
     constructor(tag_name, assets) {
         this.tag_name = tag_name;
         this.defaultAssets = new Map();
         this.extendedAssets = new Map();
+        this.withDeployAssets = new Map();
         for (const asset of assets) {
-            if (asset.name.includes('extended')) {
+            if (asset.name.includes('extended_withdeploy')) {
+                this.withDeployAssets.set(asset.name.replace(HugoRelease.keyReplacementRegex, ''), asset.browser_download_url);
+            }
+            else if (asset.name.includes('extended')) {
                 this.extendedAssets.set(asset.name.replace(HugoRelease.keyReplacementRegex, ''), asset.browser_download_url);
             }
             else {
@@ -50874,11 +50887,17 @@ class HugoRelease {
             }
         }
     }
-    assetUrl(platform, extended) {
-        const src = extended ? this.extendedAssets : this.defaultAssets;
+    assetUrl(platform, extended, withDeploy) {
+        let assets = this.defaultAssets;
+        if (extended) {
+            assets = this.extendedAssets;
+        }
+        else if (withDeploy) {
+            assets = this.withDeployAssets;
+        }
         const arch = platform.os === 'darwin' ? 'universal' : platform.arch;
         const key = `${platform.os}-${arch}${platform.archiveExtension()}`;
-        return src.get(key);
+        return assets.get(key);
     }
 }
 
@@ -51006,7 +51025,8 @@ async function run() {
     const hugoInstaller = new HugoInstaller(releaseLookup);
     await hugoInstaller.install({
         version: core.getInput('hugo-version'),
-        extended: core.getBooleanInput('extended')
+        extended: core.getBooleanInput('extended'),
+        withDeploy: core.getBooleanInput('with-deploy')
     });
     if (!core.getBooleanInput('dart-sass'))
         return;

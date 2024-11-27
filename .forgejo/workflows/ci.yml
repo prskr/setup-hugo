@@ -60,6 +60,7 @@ jobs:
           extended: true
           dart-sass: true
           with-deploy: true
+          github-token: ${{ secrets.RENOVATE_GITHUB_TOKEN }}
 
       - name: Test installed tools
         id: test-tools

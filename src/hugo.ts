@@ -41,12 +41,16 @@ export class HugoInstaller {
     const hugoBinName = this.platform.binaryName(Hugo.CmdName)
     const tmpDir = os.tmpdir()
 
+    let versionSpec = release.tag_name
+    if (cmd.extended) {
+      versionSpec += '+extended'
+    }
+    if (cmd.withDeploy) {
+      versionSpec += '+withdeploy'
+    }
+
     try {
-      const cachedTool = tc.find(
-        Hugo.Name,
-        release.tag_name,
-        this.platform.arch
-      )
+      const cachedTool = tc.find(Hugo.Name, versionSpec, this.platform.arch)
       if (cachedTool) {
         core.addPath(cachedTool)
         return
@@ -81,7 +85,7 @@ export class HugoInstaller {
         path.join(tmpDir, hugoBinName),
         hugoBinName,
         Hugo.Name,
-        release.tag_name,
+        versionSpec,
         this.platform.arch
       )
 
@@ -149,10 +153,10 @@ export class HugoRelease implements IGithubRelease {
     withDeploy?: boolean
   ): string | undefined {
     let assets = this.defaultAssets
-    if (withDeploy) {
-      assets = this.withDeployAssets
-    } else if (extended) {
+    if (extended) {
       assets = this.extendedAssets
+    } else if (withDeploy) {
+      assets = this.withDeployAssets
     }
 
     const arch = platform.os === 'darwin' ? 'universal' : platform.arch
