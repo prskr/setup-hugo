@@ -1,0 +1,22 @@
+name: Renovate
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: '33 3 * * *'
+
+jobs:
+  renovate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: docker://code.icb4dc0.de/infrastructure/images/renovate:latest
+        with:
+          args: renovate "${{ github.repository }}"
+        env:
+          RENOVATE_TOKEN: ${{ secrets.RENOVATE_TOKEN }}
+          GITHUB_COM_TOKEN: ${{ secrets.RENOVATE_GITHUB_TOKEN }}
+          RENOVATE_PLATFORM: gitea
+          RENOVATE_AUTODISCOVER: 'false'
+          RENOVATE_ENDPOINT: https://code.icb4dc0.de/api/v1
+          LOG_LEVEL: info
